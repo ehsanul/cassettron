@@ -18,10 +18,12 @@
 #include <USBHost_t36.h>
 
 USBHost myusb;
-USBHub hub1(myusb);
-USBHub hub2(myusb);
 MIDIDevice midi1(myusb);
 
+elapsedMicros timeMicros;
+elapsedMillis timeMillis;
+const byte encoderPin1 = 0;
+volatile int encoderCount1 = 0;
 
 void setup() {
   Serial.begin(115200);
@@ -58,6 +60,9 @@ void setup() {
   // This generic System Real Time handler is only used if the
   // more specific ones are not set.
   midi1.setHandleRealTimeSystem(myRealTimeSystem);
+
+  pinMode(encoderPin1, INPUT_PULLUP);
+  attachInterrupt(digitalPinToInterrupt(encoderPin1), incrementEncoderCount1, CHANGE);
 }
 
 void loop() {
@@ -67,8 +72,22 @@ void loop() {
   // data and run the handler functions as messages arrive.
   myusb.Task();
   midi1.read();
+
+  // every 20ms, print a value for the serial plotter
+  if (timeMillis > 20) {
+    timeMillis = 0;
+
+    float timeSeconds = (float) timeMicros / 1000000;
+    float encoderFrequency1 = encoderCount1 / timeSeconds;
+    timeMicros = 0;
+    encoderCount1 = 0;
+    Serial.println(encoderFrequency1);
+  }
 }
 
+void incrementEncoderCount1() {
+  encoderCount1 += 1;
+}
 
 void myNoteOn(byte channel, byte note, byte velocity) {
   // When a USB device with multiple virtual cables is used,
