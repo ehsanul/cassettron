@@ -23,9 +23,15 @@ MIDIDevice midi1(myusb);
 elapsedMicros timeMicros;
 elapsedMillis timeMillis;
 const byte encoderPin1 = 0;
+const byte motorPin1 = 1;
 volatile int encoderCount1 = 0;
+volatile int lastEncoderCountTimeMicros1 = 0;
+float lastPartialEncoderCount1 = 0;
+int currentNote = 0;
 
 void setup() {
+  analogWriteFrequency(motorPin1, 36621.09); // get rid of annoying high whine by making the pwm frequency inaudible
+  analogWriteResolution(12); // goes with the frequency above according to https://www.pjrc.com/teensy/td_pulse.html
   Serial.begin(115200);
 
   // Wait 1.5 seconds before turning on USB Host.  If connected USB devices
@@ -46,7 +52,7 @@ void setup() {
   // Only one of these System Exclusive handlers will actually be
   // used.  See the comments below for the difference between them.
   midi1.setHandleSystemExclusive(mySystemExclusiveChunk);
-  midi1.setHandleSystemExclusive(mySystemExclusive); 
+  midi1.setHandleSystemExclusive(mySystemExclusive);
   midi1.setHandleTimeCodeQuarterFrame(myTimeCodeQuarterFrame);
   midi1.setHandleSongPosition(mySongPosition);
   midi1.setHandleSongSelect(mySongSelect);
@@ -61,7 +67,8 @@ void setup() {
   // more specific ones are not set.
   midi1.setHandleRealTimeSystem(myRealTimeSystem);
 
-  pinMode(encoderPin1, INPUT_PULLUP);
+  pinMode(encoderPin1, INPUT_PULLDOWN);
+  pinMode(motorPin1, OUTPUT);
   attachInterrupt(digitalPinToInterrupt(encoderPin1), incrementEncoderCount1, CHANGE);
 }
 
@@ -73,12 +80,18 @@ void loop() {
   myusb.Task();
   midi1.read();
 
+  analogWrite(motorPin1, map(currentNote, 36, 83, (120 * 4096)/256, 4096));
+
   // every 20ms, print a value for the serial plotter
-  if (timeMillis > 20) {
+  if (timeMillis > 50) {
     timeMillis = 0;
 
     float timeSeconds = (float) timeMicros / 1000000;
-    float encoderFrequency1 = encoderCount1 / timeSeconds;
+    int microsPerCount = timeMicros / encoderCount1; // FIXME division by zero
+    int microsSinceLastEncoderCount = timeMicros - lastEncoderCountTimeMicros1;
+    float partialEncoderCount1 = (float) microsSinceLastEncoderCount / microsPerCount;
+    float encoderFrequency1 = ( (float) encoderCount1 + partialEncoderCount1 - lastPartialEncoderCount1 ) / timeSeconds;
+    lastPartialEncoderCount1 = partialEncoderCount1;
     timeMicros = 0;
     encoderCount1 = 0;
     Serial.println(encoderFrequency1);
@@ -87,6 +100,7 @@ void loop() {
 
 void incrementEncoderCount1() {
   encoderCount1 += 1;
+  lastEncoderCountTimeMicros1 = timeMicros;
 }
 
 void myNoteOn(byte channel, byte note, byte velocity) {
@@ -99,6 +113,7 @@ void myNoteOn(byte channel, byte note, byte velocity) {
   Serial.print(note, DEC);
   Serial.print(", velocity=");
   Serial.println(velocity, DEC);
+  currentNote = note;
 }
 
 void myNoteOff(byte channel, byte note, byte velocity) {
@@ -108,6 +123,7 @@ void myNoteOff(byte channel, byte note, byte velocity) {
   Serial.print(note, DEC);
   Serial.print(", velocity=");
   Serial.println(velocity, DEC);
+  currentNote = 0;
 }
 
 void myAfterTouchPoly(byte channel, byte note, byte velocity) {
