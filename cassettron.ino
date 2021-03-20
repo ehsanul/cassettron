@@ -16,6 +16,7 @@
 */
 
 #include <USBHost_t36.h>
+#include "Motor.h"
 
 USBHost myusb;
 MIDIDevice midi1(myusb);
@@ -26,32 +27,11 @@ elapsedMillis timeMillis;
 const byte encoderPin1 = 0;
 const byte encoderPin1b = 33;
 const byte motorPin1 = 1;
-volatile int encoderCount1 = 0;
-volatile int encoderCount1b = 0;
-//volatile int avgEncoderCount1 = 0;
-//volatile int avgEncoderCount1b = 0;
-volatile int filteredEncoderCount1 = 0;
-volatile int filteredEncoderCount1b = 0;
-volatile int skipCount1 = 0;
-volatile int skipCount1b = 0;
-volatile int lastEncoderCountTimeMicros1 = 0;
-volatile int lastEncoderCountTimeMicros1b = 0;
-volatile int diffTimeMicros1 = 0;
-volatile int diffTimeMicros1b = 0;
-const float EMA_a = 0.4;
-volatile float avgDiffTimeMicros1 = 0;
-volatile float avgDiffTimeMicros1b = 0;
-float lastPartialEncoderCount1 = 0;
-float lastPartialEncoderCount1b = 0;
-float filteredEncoderFrequency1y = 0;
-float filteredEncoderFrequency1xy = 0;
-float filteredEncoderFrequency1by = 0;
-float filteredEncoderFrequency1bxy = 0;
 int currentNote = 0;
 
+Motor motor1(motorPin1, encoderPin1b);
+
 void setup() {
-  analogWriteFrequency(motorPin1, 36621.09); // get rid of annoying high whine by making the pwm frequency inaudible
-  analogWriteResolution(12); // goes with the frequency above according to https://www.pjrc.com/teensy/td_pulse.html
   Serial.begin(115200);
 
   // Wait 1.5 seconds before turning on USB Host.  If connected USB devices
@@ -87,13 +67,7 @@ void setup() {
   // more specific ones are not set.
   midi1.setHandleRealTimeSystem(myRealTimeSystem);
 
-  pinMode(encoderPin1, INPUT_PULLDOWN);
-  pinMode(encoderPin1b, INPUT_PULLDOWN);
-  pinMode(motorPin1, OUTPUT);
-  //attachInterrupt(digitalPinToInterrupt(encoderPin1), incrementEncoderCount1, CHANGE);
-  //attachInterrupt(digitalPinToInterrupt(encoderPin1b), incrementEncoderCount1b, CHANGE);
-  attachInterrupt(digitalPinToInterrupt(encoderPin1), incrementEncoderCount1, RISING);
-  attachInterrupt(digitalPinToInterrupt(encoderPin1b), incrementEncoderCount1b, RISING);
+  motor1.setup([]{motor1.handleInterrupt();});
 }
 
 void loop() {
@@ -105,194 +79,15 @@ void loop() {
   midi1.read();
 
   //analogWrite(motorPin1, map(currentNote, 36, 83, (120 * 4096)/256, 4096));
-  analogWrite(motorPin1, (180 * 4096)/256);
+  //analogWrite(motorPin1, (180 * 4096)/256);
   //analogWrite(motorPin1, (225 * 4096)/256);
+  motor1.setSpeed(185.0 / 256);
 
   // every 50ms, print a value for the serial plotter
   if (timeMillis > 50) {
     timeMillis = 0;
-
-    float timeSeconds = (float) timeMicros / 1000000;
-
-    if (encoderCount1b > 0 || encoderCount1b > 0) {
-      int microsSinceLastEncoderCount1 = monotonicTimeMicros - lastEncoderCountTimeMicros1;
-      int microsSinceLastEncoderCount1b = monotonicTimeMicros - lastEncoderCountTimeMicros1b;
-      float partialEncoderCount1 = (float) microsSinceLastEncoderCount1 / avgDiffTimeMicros1;
-      float partialEncoderCount1b = (float) microsSinceLastEncoderCount1b / avgDiffTimeMicros1b;
-      float encoderFrequency1 = (float) encoderCount1 / 20 / timeSeconds;
-      float encoderFrequency1b = (float) encoderCount1b / 20 / (4 * timeSeconds);
-      float filteredEncoderFrequency1 = (float) filteredEncoderCount1 / 20 / timeSeconds;
-      float filteredEncoderFrequency1b = (float) filteredEncoderCount1b / 20 / (4 * timeSeconds);
-      float encoderCount1x = (float) encoderCount1 + partialEncoderCount1 - lastPartialEncoderCount1;
-      float encoderCount1bx = (float) encoderCount1b + partialEncoderCount1b - lastPartialEncoderCount1b;
-      float filteredEncoderCount1x = (float) filteredEncoderCount1 + partialEncoderCount1 - lastPartialEncoderCount1;
-      float filteredEncoderCount1bx = (float) filteredEncoderCount1b + partialEncoderCount1b - lastPartialEncoderCount1b;
-      float encoderFrequency1x = encoderCount1x / 20 / timeSeconds;
-      float encoderFrequency1bx = encoderCount1bx / 20 / timeSeconds;
-      float filteredEncoderFrequency1x = (float) filteredEncoderCount1x / 20 / timeSeconds;
-      float filteredEncoderFrequency1bx = (float) filteredEncoderCount1bx / 20 / (4 * timeSeconds);
-      filteredEncoderFrequency1y = 0.6 * filteredEncoderFrequency1 + 0.4 * filteredEncoderFrequency1y;
-      filteredEncoderFrequency1by = 0.6 * filteredEncoderFrequency1b + 0.4 * filteredEncoderFrequency1by;
-      filteredEncoderFrequency1xy = 0.4 * filteredEncoderFrequency1x + 0.6 * filteredEncoderFrequency1xy;
-      filteredEncoderFrequency1bxy = 0.4 * filteredEncoderFrequency1bx + 0.6 * filteredEncoderFrequency1bxy;
-      // in case we ever get a nan here, let's recover from it
-      if (isnan(filteredEncoderFrequency1xy)) { filteredEncoderFrequency1xy = 0; }
-      if (isnan(filteredEncoderFrequency1bxy)) { filteredEncoderFrequency1bxy = 0; }
-      lastPartialEncoderCount1 = partialEncoderCount1;
-      lastPartialEncoderCount1b = partialEncoderCount1b;
-
-      // Serial.print("Count1:");
-      // Serial.print(encoderCount1);
-
-      // Serial.print(",");
-      // Serial.print("Filtered Count1:");
-      // Serial.print(filteredEncoderCount1);
-
-      // Serial.print(",");
-      // Serial.print("Count1x:");
-      // Serial.print(encoderCount1x);
-
-      // Serial.print(",");
-      // Serial.print("Filtered Count1x:");
-      // Serial.print(filteredEncoderCount1x);
-
-      //Serial.print(",");
-      //Serial.print("Count1b:");
-      //Serial.print(encoderCount1b);
-
-      //Serial.print(",");
-      //Serial.print("Filtered Count1b:");
-      //Serial.print(filteredEncoderCount1b);
-
-      //Serial.print(",");
-      //Serial.print("Count1bx:");
-      //Serial.print(encoderCount1bx);
-
-      //Serial.print(",");
-      //Serial.print("Filtered Count1bx:");
-      //Serial.print(filteredEncoderCount1bx);
-
-      //Serial.print(",");
-      //Serial.print("Diff1:");
-      //Serial.print(diffTimeMicros1);
-
-      //Serial.print(",");
-      //Serial.print("Diff1b:");
-      //Serial.print(diffTimeMicros1b);
-
-      //Serial.print(",");
-      Serial.print("freq1:");
-      Serial.print(encoderFrequency1);
-
-      // Serial.print(",");
-      // Serial.print("filtered_freq1:");
-      // Serial.print(filteredEncoderFrequency1);
-
-      // Serial.print(",");
-      // Serial.print("freq1x:");
-      // Serial.print(filteredEncoderFrequency1x);
-
-      // Serial.print(",");
-      // Serial.print("freq1y:");
-      // Serial.print(filteredEncoderFrequency1y);
-
-      Serial.print(",");
-      Serial.print("freq1xy:");
-      Serial.print(filteredEncoderFrequency1xy);
-
-      Serial.print(",");
-      Serial.print("freq1b:");
-      Serial.print(encoderFrequency1b);
-
-      // Serial.print(",");
-      // Serial.print("filtered_freq1b:");
-      // Serial.print(filteredEncoderFrequency1b);
-
-      // Serial.print(",");
-      // Serial.print("freq1bx:");
-      // Serial.print(filteredEncoderFrequency1bx);
-
-      // Serial.print(",");
-      // Serial.print("freq1by:");
-      // Serial.print(filteredEncoderFrequency1by);
-
-      Serial.print(",");
-      Serial.print("freq1bxy:");
-      Serial.print(filteredEncoderFrequency1bxy);
-
-      Serial.println("");
-    } else {
-      //Serial.print(".");
-    }
-
-    timeMicros = 0;
-    encoderCount1 = 0;
-    encoderCount1b = 0;
-    filteredEncoderCount1 = 0;
-    filteredEncoderCount1b = 0;
+    motor1.calculateFrequency();
   }
-}
-
-void incrementEncoderCount1() {
-  encoderCount1 += 1;
-  diffTimeMicros1 = monotonicTimeMicros - lastEncoderCountTimeMicros1;
-  if (diffTimeMicros1 < avgDiffTimeMicros1 / 2) {
-    if (skipCount1 < 3) {
-      // skip bad value!
-      skipCount1 += 1;
-      //Serial.print("1 Bad: ");
-      //Serial.print(diffTimeMicros1);
-      //Serial.print(", Avg: ");
-      //Serial.print(avgDiffTimeMicros1);
-      //Serial.println("");
-    } else {
-      // reset, we skipped too many times
-      avgDiffTimeMicros1 = 0;
-    }
-  } else {
-    skipCount1 = 0;
-    filteredEncoderCount1 += 1;
-    if (avgDiffTimeMicros1 == 0 && lastEncoderCountTimeMicros1 != 0) {
-      // initial value
-      avgDiffTimeMicros1 = diffTimeMicros1;
-    } else if (avgDiffTimeMicros1 != 0) {
-      avgDiffTimeMicros1 = EMA_a * diffTimeMicros1 + (1.0 - EMA_a) * avgDiffTimeMicros1;
-      // in case we ever get a nan here, let's recover from it
-      if (isnan(avgDiffTimeMicros1)) { avgDiffTimeMicros1 = 0; }
-    }
-  }
-  lastEncoderCountTimeMicros1 = monotonicTimeMicros;
-}
-
-void incrementEncoderCount1b() {
-  encoderCount1b += 1;
-  diffTimeMicros1b = monotonicTimeMicros - lastEncoderCountTimeMicros1b;
-  if (diffTimeMicros1b < avgDiffTimeMicros1b / 2) {
-    if (skipCount1b < 3) {
-      // skip bad value!
-      skipCount1b += 1;
-      //Serial.print("1b Bad: ");
-      //Serial.print(diffTimeMicros1b);
-      //Serial.print(", Avg: ");
-      //Serial.print(avgDiffTimeMicros1b);
-      //Serial.println("");
-    } else {
-      // reset, we skipped too many times
-      avgDiffTimeMicros1b = 0;
-    }
-  } else {
-    skipCount1b = 0;
-    filteredEncoderCount1b += 1;
-    if (avgDiffTimeMicros1b == 0 && lastEncoderCountTimeMicros1b != 0) {
-      // initial value
-      avgDiffTimeMicros1b = diffTimeMicros1b;
-    } else if (avgDiffTimeMicros1b != 0) {
-      avgDiffTimeMicros1b = EMA_a * diffTimeMicros1b + (1.0 - EMA_a) * avgDiffTimeMicros1b;
-      // in case we ever get a nan here, let's recover from it
-      if (isnan(avgDiffTimeMicros1b)) { avgDiffTimeMicros1b = 0; }
-    }
-  }
-  lastEncoderCountTimeMicros1b = monotonicTimeMicros;
 }
 
 void myNoteOn(byte channel, byte note, byte velocity) {
