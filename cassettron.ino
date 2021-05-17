@@ -24,12 +24,12 @@ MIDIDevice midi1(myusb);
 elapsedMicros timeMicros;
 elapsedMicros monotonicTimeMicros;
 elapsedMillis timeMillis;
-const byte encoderPin1 = 0;
-const byte encoderPin1b = 33;
+const byte encoderPin1 = 33;
 const byte motorPin1 = 1;
-int currentNote = 0;
 
-Motor motor1(motorPin1, encoderPin1b);
+Motor motor1(motorPin1, encoderPin1);
+const double TET12 = 1.05946309436; // 12th root of 2`
+int noteCount = 0;
 
 void setup() {
   Serial.begin(115200);
@@ -78,15 +78,10 @@ void loop() {
   myusb.Task();
   midi1.read();
 
-  //analogWrite(motorPin1, map(currentNote, 36, 83, (120 * 4096)/256, 4096));
-  //analogWrite(motorPin1, (180 * 4096)/256);
-  //analogWrite(motorPin1, (225 * 4096)/256);
-  motor1.setSpeed(185.0 / 256);
-
   // every 50ms, print a value for the serial plotter
   if (timeMillis > 50) {
     timeMillis = 0;
-    motor1.calculateFrequency();
+    motor1.step();
   }
 }
 
@@ -100,7 +95,17 @@ void myNoteOn(byte channel, byte note, byte velocity) {
   Serial.print(note, DEC);
   Serial.print(", velocity=");
   Serial.println(velocity, DEC);
-  currentNote = note;
+
+  int middleC = 60;
+  double factor = pow(TET12, abs(note - middleC));
+  double desiredFrequency = 5.0; // middleC
+  if (note >= middleC) {
+    desiredFrequency *= factor;
+  } else {
+    desiredFrequency /= factor;
+  }
+  motor1.setDesiredFrequency((float) desiredFrequency);
+  noteCount += 1;
 }
 
 void myNoteOff(byte channel, byte note, byte velocity) {
@@ -110,7 +115,10 @@ void myNoteOff(byte channel, byte note, byte velocity) {
   Serial.print(note, DEC);
   Serial.print(", velocity=");
   Serial.println(velocity, DEC);
-  currentNote = 0;
+  noteCount -= 1;
+  if (noteCount == 0) {
+    motor1.setDesiredFrequency(0.0);
+  }
 }
 
 void myAfterTouchPoly(byte channel, byte note, byte velocity) {

@@ -9,12 +9,16 @@ class Motor
   public:
     Motor(byte motorPin, byte encoderPin);
     void setup(void (*ISR_callback)(void));
-    void setSpeed(float value);
     void handleInterrupt();
-    void calculateFrequency();
+    void step();
+    void setDesiredFrequency(float value);
   private:
+    void setSpeed(float value);
+    void calculateFrequency();
+    float pidValue();
     static constexpr float EMA_a = 0.4;
     float frequency;
+    float desiredFrequency = 4.0;
     int motorPin;
     int encoderPin;
     int resolution = 12;
@@ -26,9 +30,13 @@ class Motor
     volatile int filteredEncoderCount = 0;
     volatile int skipCount = 0;
     volatile int lastCountTimeMicros = 0;
+    volatile int lastPidTime = 0;
     volatile int diffTimeMicros = 0;
     volatile float avgDiffTimeMicros = 0;
     float lastPartialCount = 0;
+    float lastError = 0;
+    float intError = 0;
+    float lastIntError = 0;
 };
 
 #endif

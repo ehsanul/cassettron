@@ -2,6 +2,21 @@
 #include "Motor.h"
 #include <math.h>
 
+//const float kp = 0.03;
+//const float ki = 0.08;
+//
+// too much overshoot
+//const float kp = 0.015;
+//const float ki = 0.07;
+//const float kp = 0.0075;
+//const float ki = 0.04;
+const float kp = 0.012;
+const float ki = 0.07;
+const float kd = 0;
+const float minPidError = 0.0;
+const float basePidError = 175.0/255.0;
+const float maxPidError = 1.0;
+
 Motor::Motor(byte motorPin, byte encoderPin): motorPin(motorPin), encoderPin(encoderPin)
 {
 }
@@ -33,6 +48,10 @@ void Motor::setup(void (*ISR_callback)(void))
   pinMode(encoderPin, INPUT_PULLDOWN);
   pinMode(motorPin, OUTPUT);
 
+  // setup could be long after initialization, so reset timers
+  monotonicTimeMicros = 0;
+  timeMicros = 0;
+
   attachInterrupt(digitalPinToInterrupt(encoderPin), ISR_callback, RISING);
 }
 
@@ -42,11 +61,16 @@ void Motor::setSpeed(float value)
   analogWrite(motorPin, value * maxWriteValue);
 }
 
+void Motor::setDesiredFrequency(float value)
+{
+  desiredFrequency = value;
+}
+
 void Motor::handleInterrupt()
 {
   encoderCount += 1;
   diffTimeMicros = monotonicTimeMicros - lastCountTimeMicros;
-  if (diffTimeMicros < avgDiffTimeMicros / 4) {
+  if (diffTimeMicros < avgDiffTimeMicros / 2) {
     if (skipCount < 3) {
       // skip bad value!
       skipCount += 1;
@@ -77,13 +101,14 @@ void Motor::handleInterrupt()
 void Motor::calculateFrequency() {
   float timeSeconds = (float) timeMicros / 1000000;
 
-  float rawFrequency = (float) encoderCount / 20 / timeSeconds;
+  // float rawFrequency = (float) encoderCount / 20 / timeSeconds;
   // float filteredFrequency = (float) filteredEncoderCount / 20 / timeSeconds;
 
   // use the moving average and time since last count to predict a partial
   // count, in an attempt to get a smoother result at low speeds
   int microsSinceLastCount = monotonicTimeMicros - lastCountTimeMicros;
   float partialCount = (float) microsSinceLastCount / avgDiffTimeMicros;
+  if (partialCount > 1.5) { partialCount = 0; } // in the case we stop, we don't want any partial count anymore
   float filteredCountPlusPartial = (float) filteredEncoderCount + partialCount - lastPartialCount;
   lastPartialCount = partialCount;
 
@@ -112,24 +137,74 @@ void Motor::calculateFrequency() {
   //Serial.print(diffTimeMicros);
 
   //Serial.print(",");
-  Serial.print("raw_frequency:");
-  Serial.print(rawFrequency);
+  //Serial.print("raw_frequency:");
+  //Serial.print(rawFrequency);
 
-  // Serial.print(",");
-  // Serial.print("filtered_freq:");
-  // Serial.print(filteredFrequency);
+  //Serial.print(",");
+  //Serial.print("filtered_freq:");
+  //Serial.print(filteredFrequency);
 
-  // Serial.print(",");
-  // Serial.print("filtered_freq_plus_partial:");
-  // Serial.print(filteredFrequencyPlusPartial);
+  //Serial.print(",");
+  //Serial.print("filtered_freq_plus_partial:");
+  //Serial.print(filteredFrequencyPlusPartial);
 
-  Serial.print(",");
-  Serial.print("frequency:");
-  Serial.print(frequency);
+  //Serial.print(",");
+  //Serial.print("frequency:");
+  //Serial.print(frequency);
 
-  Serial.println("");
+  //Serial.println("");
 
   timeMicros = 0;
   encoderCount = 0;
   filteredEncoderCount = 0;
+}
+
+float Motor::pidValue() {
+  float e = desiredFrequency - frequency;
+  float dt = (float) (monotonicTimeMicros - lastPidTime) / 1000000;
+  float intError = lastIntError + (dt * (e + lastError) / 2);
+
+  Serial.print("e:");
+  Serial.print(e);
+  Serial.print(",");
+
+  float pidError = kp * e + ki * intError + (kd * (e - lastError) / dt) ;
+  if (desiredFrequency > 0) {
+    // the motor needs a minimum to get going. this makes the PID work better
+    pidError += basePidError;
+  }
+  if (pidError > maxPidError) {
+    pidError = maxPidError;
+    intError = lastIntError; // anti-windup
+  }
+  if (pidError < minPidError) {
+    pidError = minPidError;
+    intError = lastIntError; // anti-windup
+  }
+
+  Serial.print("intError:");
+  Serial.print(intError);
+  Serial.print(",");
+
+  lastIntError = intError;
+  lastError = e;
+  lastPidTime = monotonicTimeMicros;
+
+  return pidError;
+}
+
+void Motor::step() {
+  calculateFrequency();
+  float pidVal = pidValue();
+  setSpeed(pidVal);
+
+  Serial.print("pidValue:");
+  Serial.print(pidVal);
+  Serial.print(",");
+  Serial.print("pidValue50x:");
+  Serial.print((pidVal - basePidError) * 10);
+  Serial.print(",");
+  Serial.print("f:");
+  Serial.print(frequency);
+  Serial.println();
 }
