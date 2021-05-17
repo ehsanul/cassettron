@@ -12,10 +12,10 @@ class Motor
     void handleInterrupt();
     void step();
     void setDesiredFrequency(float value);
+    float pidValue();
   private:
     void setSpeed(float value);
     void calculateFrequency();
-    float pidValue();
     static constexpr float EMA_a = 0.4;
     float frequency;
     float desiredFrequency = 4.0;

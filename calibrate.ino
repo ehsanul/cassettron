@@ -9,7 +9,10 @@ const double TET12 = 1.05946309436; // 12th root of 2`
 const int MIN_NOTE = 38; // D2, lowest note we can reach
 const int MAX_NOTE = 74; // D5, highest note we can reach
 int currentNote = MIN_NOTE;
-float avgPidValue = 0.0;
+float* pidValues = new float[MAX_NOTE - MIN_NOTE +1];
+const int historyLength = 5;
+float* pidValueHistory = new float[historyLength];
+int pidValueHistoryIndex = 0;
 
 void setup() {
   Serial.begin(115200);
@@ -22,15 +25,23 @@ void loop() {
   if (timeMillis > 50) {
     timeMillis = 0;
     motor1.step();
-  }
 
-  // TODO assign avgPidValue
+    // store pid values in pidhistory array
+    pidValueHistory[pidValueHistoryIndex] = motor1.pidValue();
+    if (pidValueHistoryIndex < historyLength - 1) {
+      pidValueHistoryIndex += 1;
+    } else {
+      // we've reached the end of the array when index is historyLength-1
+      // overwrite old values in array to get most recent 5 pid values
+      pidValueHistoryIndex = 0;
+    }
+  }
 
   // if the motor has been running at a stable speed for long enough, we can
   // store the average value for analog writes to it
   bool stableSpeed = false; // TODO implement this
   if (stableSpeed) {
-    storeValue(currentNote, avgPidValue)
+    addPidValue(currentNote, calculateAvgPidValue())
     if (currentNote < MAX_NOTE) {
       // go to next note!
       currentNote += 1;
@@ -42,8 +53,19 @@ void loop() {
   }
 }
 
-void storeValue(int note, float pidValue) {
+//calc avg of the 5 most recenet PID values by iterating over history array
+float calculateAvgPidValue(){
+  float sum = 0;
+  for(int i=0; i<historyLength; i++){
+    sum+=pidValueHistory[i];
+  }
+  return sum/historyLength;
+}
+
+void addPidValue(int note, float pidValue) {
   // TODO implement
+  int index = note - MIN_NOTE;
+  pidValues[index] = pidValue;
 }
 
 // TODO move to Voice class
