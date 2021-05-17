@@ -21,8 +21,6 @@
 USBHost myusb;
 MIDIDevice midi1(myusb);
 
-elapsedMicros timeMicros;
-elapsedMicros monotonicTimeMicros;
 elapsedMillis timeMillis;
 const byte encoderPin1 = 33;
 const byte motorPin1 = 1;
@@ -63,6 +61,7 @@ void setup() {
   midi1.setHandleStop(myStop);
   midi1.setHandleActiveSensing(myActiveSensing);
   midi1.setHandleSystemReset(mySystemReset);
+
   // This generic System Real Time handler is only used if the
   // more specific ones are not set.
   midi1.setHandleRealTimeSystem(myRealTimeSystem);
@@ -96,9 +95,10 @@ void myNoteOn(byte channel, byte note, byte velocity) {
   Serial.print(", velocity=");
   Serial.println(velocity, DEC);
 
+  // TODO move to Voice class
   int middleC = 60;
   double factor = pow(TET12, abs(note - middleC));
-  double desiredFrequency = 5.0; // middleC
+  double desiredFrequency = 5.0; // supposed to be middleC, but not actually tuned!!!
   if (note >= middleC) {
     desiredFrequency *= factor;
   } else {
