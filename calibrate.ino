@@ -10,9 +10,15 @@ const int MIN_NOTE = 38; // D2, lowest note we can reach
 const int MAX_NOTE = 74; // D5, highest note we can reach
 int currentNote = MIN_NOTE;
 float* pidValues = new float[MAX_NOTE - MIN_NOTE +1];
-const int historyLength = 5;
-float* pidValueHistory = new float[historyLength];
+const int pidValueHistoryLength = 5;
+float* pidValueHistory = new float[pidValueHistoryLength];
 int pidValueHistoryIndex = 0;
+
+int frequencyHistoryLength = 20;
+float* frequencyHistory = new float[frequencyHistoryLength];
+int frequencyHistoryIndex = 0;
+
+const float THRESHOLD_DEVIATION = 0; // TODO tune this value
 
 void setup() {
   Serial.begin(115200);
@@ -26,46 +32,72 @@ void loop() {
     timeMillis = 0;
     motor1.step();
 
-    // store pid values in pidhistory array
-    pidValueHistory[pidValueHistoryIndex] = motor1.pidValue();
-    if (pidValueHistoryIndex < historyLength - 1) {
-      pidValueHistoryIndex += 1;
-    } else {
-      // we've reached the end of the array when index is historyLength-1
-      // overwrite old values in array to get most recent 5 pid values
-      pidValueHistoryIndex = 0;
+    addPidValueHistory(motor1.pidValue()) {
+    addFrequencyHistory(motor1.frequency);
+
+    // if the motor has been running at a stable speed for long enough, we can
+    // store the average value for analog writes to it
+    bool stableSpeed = frequencyDeviation() < THRESHOLD_DEVIATION;
+    if (stableSpeed) {
+      addPidValue(currentNote, avgPidValue())
+      if (currentNote < MAX_NOTE) {
+        // go to next note!
+        currentNote += 1;
+        setMotorFrequency(currentNote);
+      } else {
+        // if we are at the max note, we are done!
+        // TODO we need to store the pidValues to EEPROM!
+        exit(0);
+      }
     }
+
   }
 
-  // if the motor has been running at a stable speed for long enough, we can
-  // store the average value for analog writes to it
-  bool stableSpeed = false; // TODO implement this
-  if (stableSpeed) {
-    addPidValue(currentNote, calculateAvgPidValue())
-    if (currentNote < MAX_NOTE) {
-      // go to next note!
-      currentNote += 1;
-      setMotorFrequency(currentNote);
-    } else {
-      // if we are at the max note, we are done!
-      exit(0)
-    }
-  }
 }
 
-//calc avg of the 5 most recenet PID values by iterating over history array
-float calculateAvgPidValue(){
+float avgPidValue(){
   float sum = 0;
-  for(int i=0; i<historyLength; i++){
-    sum+=pidValueHistory[i];
+  for(int i = 0; i < pidValueHistoryLength; i++){
+    sum += pidValueHistory[i];
   }
-  return sum/historyLength;
+  return sum / pidValueHistoryLength;
+}
+
+float avgFrequency(){
+  float sum = 0;
+  for(int i = 0; i < frequencyHistoryLength; i++){
+    sum += frequencyHistory[i];
+  }
+  return sum / frequencyHistoryLength;
+}
+
+// numerator in std dev formula
+float frequencyDeviation(){
+  float sum = 0;
+  int deviation;
+  int mean = avgFrequency()
+  for(int i = 0; i < frequencyHistoryLength; i++){
+    deviation = frequencyHistory[i] - mean
+    sum += deviation * deviation;
+  }
+  return sum / frequencyHistoryLength;
 }
 
 void addPidValue(int note, float pidValue) {
-  // TODO implement
   int index = note - MIN_NOTE;
   pidValues[index] = pidValue;
+}
+
+void addPidValueHistory(float pidValue) {
+    pidValueHistory[pidValueHistoryIndex] = pidValue
+    pidValueHistoryIndex += 1;
+    pidValueHistoryIndex %= pidValueHistoryLength; // wraparound
+}
+
+void addFrequencyHistory(float frequency) {
+  frequencyHistory[frequencyHistoryIndex] = frequency;
+  frequencyHistoryIndex += 1;
+  frequencyHistoryIndex %= frequencyHistoryLength;
 }
 
 // TODO move to Voice class
