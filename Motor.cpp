@@ -164,9 +164,9 @@ float Motor::pidValue() {
   float dt = (float) (monotonicTimeMicros - lastPidTime) / 1000000;
   float intError = lastIntError + (dt * (e + lastError) / 2);
 
-  Serial.print("e:");
-  Serial.print(e);
-  Serial.print(",");
+  //Serial.print("e:");
+  //Serial.print(e);
+  //Serial.print(",");
 
   float pidError = kp * e + ki * intError + (kd * (e - lastError) / dt) ;
   if (desiredFrequency > 0) {
@@ -182,9 +182,9 @@ float Motor::pidValue() {
     intError = lastIntError; // anti-windup
   }
 
-  Serial.print("intError:");
-  Serial.print(intError);
-  Serial.print(",");
+  //Serial.print("intError:");
+  //Serial.print(intError);
+  //Serial.print(",");
 
   lastIntError = intError;
   lastError = e;
@@ -198,13 +198,13 @@ void Motor::step() {
   float pidVal = pidValue();
   setSpeed(pidVal);
 
-  Serial.print("pidValue:");
-  Serial.print(pidVal);
-  Serial.print(",");
-  Serial.print("pidValue50x:");
-  Serial.print((pidVal - basePidError) * 10);
-  Serial.print(",");
-  Serial.print("f:");
-  Serial.print(frequency);
-  Serial.println();
+  //Serial.print("pidValue:");
+  //Serial.print(pidVal);
+  //Serial.print(",");
+  //Serial.print("pidValue50x:");
+  //Serial.print((pidVal - basePidError) * 10);
+  //Serial.print(",");
+  //Serial.print("f:");
+  //Serial.print(frequency);
+  //Serial.println();
 }

@@ -13,11 +13,11 @@ class Motor
     void step();
     void setDesiredFrequency(float value);
     float pidValue();
+    float frequency;
   private:
     void setSpeed(float value);
     void calculateFrequency();
     static constexpr float EMA_a = 0.4;
-    float frequency;
     float desiredFrequency = 4.0;
     int motorPin;
     int encoderPin;
