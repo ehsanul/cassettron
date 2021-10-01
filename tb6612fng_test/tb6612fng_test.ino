@@ -5,8 +5,6 @@ elapsedMillis timeMillis;
 int speedPotPin = 24;
 int freqPotPin = 25;
 
-int motorPin1 = 8;
-int motorPin2 = 9;
 int motorPinPWM = 1;
 
 const byte encoderPin1 = 33;
@@ -19,8 +17,6 @@ void setup() {
   pinMode(freqPotPin, INPUT);
   pinMode(speedPotPin, INPUT);
 
-  pinMode(motorPin1 , OUTPUT);
-  pinMode(motorPin2 , OUTPUT);
   pinMode(motorPinPWM , OUTPUT);
   analogWriteResolution(12); // max 4096
 
@@ -33,9 +29,6 @@ void loop() {
 
   float speed = map(analogRead(speedPotPin), 0, 1024, 0, 4096);
   analogWrite(motorPinPWM, speed);
-
-  digitalWrite(motorPin1, HIGH);
-  digitalWrite(motorPin2, LOW);
 
   // every 50ms, print a value for the serial plotter
   if (timeMillis > 50) {
