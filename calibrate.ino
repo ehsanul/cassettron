@@ -1,4 +1,5 @@
 #include "Motor.h"
+#include <EEPROM.h>
 
 const byte encoderPin1 = 33;
 const byte motorPin1 = 1;
@@ -47,12 +48,13 @@ void loop() {
       } else {
         // if we are at the max note, we are done!
         // TODO we need to store the pidValues to EEPROM!
+        EEPROM.put(0, *pidValues)
         exit(0);
       }
     }
 
   }
-
+ }
 }
 
 float avgPidValue(){
