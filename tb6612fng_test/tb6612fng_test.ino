@@ -1,9 +1,9 @@
-#include "../Motor.h"
+#include "Motor.h"
 
 elapsedMillis timeMillis;
 
-int resPotPin = 11;
-int freqPotPin = 12;
+int speedPotPin = 24;
+int freqPotPin = 25;
 
 int motorPin1 = 8;
 int motorPin2 = 9;
@@ -28,22 +28,26 @@ void setup() {
 }
 
 void loop() {
-  float writeFreq = map(analogRead(freqPotPin), 0, 1024, 10000, 40000)
+  float writeFreq = map(analogRead(freqPotPin), 0, 1024, 10000, 40000);
   analogWriteFrequency(motorPinPWM, writeFreq);
 
-  float speed = map(analogRead(speedPotPin), 0, 1024, 0, 4096)
+  float speed = map(analogRead(speedPotPin), 0, 1024, 0, 4096);
   analogWrite(motorPinPWM, speed);
+
+  digitalWrite(motorPin1, HIGH);
+  digitalWrite(motorPin2, LOW);
 
   // every 50ms, print a value for the serial plotter
   if (timeMillis > 50) {
-    motor1.step();
-    Serial.print("writeFreq=");
-    Serial.print(writeFreq / 1000.0, DEC);
-    Serial.print(", speed=");
-    Serial.print(speed / 100, DEC);
-    Serial.print(", motorFreq=");
-    Serial.print(motor1.frequency * 10.0, DEC);
-    Serial.println();
+    encoderMotor.step();
+    Serial.println(analogRead(speedPotPin));
+    // Serial.print("writeFreq=");
+    // Serial.print(writeFreq / 1000.0, DEC);
+    // Serial.print(", speed=");
+    // Serial.print(speed / 100, DEC);
+    // Serial.print(", motorFreq=");
+    // Serial.print(encoderMotor.frequency * 10.0, DEC);
+    // Serial.println();
     timeMillis = 0;
   }
 
