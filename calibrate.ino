@@ -10,13 +10,13 @@ const double TET12 = 1.05946309436; // 12th root of 2`
 const int MIN_NOTE = 38; // D2, lowest note we can reach
 const int MAX_NOTE = 74; // D5, highest note we can reach
 int currentNote = MIN_NOTE;
-float* pidValues = new float[MAX_NOTE - MIN_NOTE +1];
+float pidValues[MAX_NOTE - MIN_NOTE +1];
 const int pidValueHistoryLength = 5;
-float* pidValueHistory = new float[pidValueHistoryLength];
+float pidValueHistory[pidValueHistoryLength];
 int pidValueHistoryIndex = 0;
 
 int frequencyHistoryLength = 20;
-float* frequencyHistory = new float[frequencyHistoryLength];
+float frequencyHistory[frequencyHistoryLength];
 int frequencyHistoryIndex = 0;
 
 const float THRESHOLD_DEVIATION = 0; // TODO tune this value
@@ -47,8 +47,7 @@ void loop() {
         setMotorFrequency(currentNote);
       } else {
         // if we are at the max note, we are done!
-        // TODO we need to store the pidValues to EEPROM!
-        EEPROM.put(0, *pidValues)
+        EEPROM.put(0, pidValues);
         exit(0);
       }
     }
