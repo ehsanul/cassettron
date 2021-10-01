@@ -1,4 +1,4 @@
-#include "Motor.h"
+#include "/libraries/Motor.h"
 #include <EEPROM.h>
 
 const byte encoderPin1 = 33;
