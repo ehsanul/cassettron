@@ -16,7 +16,7 @@
 */
 
 #include <USBHost_t36.h>
-#include "Motor.h"
+#include "CassetronMotor.h"
 
 USBHost myusb;
 MIDIDevice midi1(myusb);
@@ -98,13 +98,13 @@ void myNoteOn(byte channel, byte note, byte velocity) {
   // TODO move to Voice class
   int middleC = 60;
   double factor = pow(TET12, abs(note - middleC));
-  double desiredFrequency = 5.0; // supposed to be middleC, but not actually tuned!!!
+  double desiredFrequency = 7.5; // supposed to be middleC, but not actually tuned!!!
   if (note >= middleC) {
     desiredFrequency *= factor;
   } else {
     desiredFrequency /= factor;
   }
-  motor1.setDesiredFrequency((float) desiredFrequency);
+  motor1.desiredFrequency = (float) desiredFrequency;
   noteCount += 1;
 }
 

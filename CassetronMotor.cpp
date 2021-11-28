@@ -1,5 +1,5 @@
 #include "Arduino.h"
-#include "Motor.h"
+#include "CassetronMotor.h"
 #include <math.h>
 
 //const float kp = 0.03;
@@ -14,7 +14,7 @@ const float kp = 0.012;
 const float ki = 0.07;
 const float kd = 0;
 const float minPidError = 0.0;
-const float basePidError = 175.0/255.0;
+const float basePidError = 100.0/255.0;
 const float maxPidError = 1.0;
 
 Motor::Motor(byte motorPin, byte encoderPin): motorPin(motorPin), encoderPin(encoderPin)
@@ -58,12 +58,7 @@ void Motor::setup(void (*ISR_callback)(void))
 // value between 0.0 and 1.0
 void Motor::setSpeed(float value)
 {
-  analogWrite(motorPin, value * maxWriteValue);
-}
-
-void Motor::setDesiredFrequency(float value)
-{
-  desiredFrequency = value;
+  analogWrite(motorPin, map(value, 0.0, 1.0, maxWriteValue, 0));
 }
 
 void Motor::handleInterrupt()
@@ -164,9 +159,12 @@ float Motor::pidValue() {
   float dt = (float) (monotonicTimeMicros - lastPidTime) / 1000000;
   float intError = lastIntError + (dt * (e + lastError) / 2);
 
-  Serial.print("e:");
-  Serial.print(e);
-  Serial.print(",");
+  //Serial.print("e:");
+  //Serial.print(e);
+  //Serial.print(",");
+  //Serial.print("error %:");
+  //Serial.print(100.0 * e / desiredFrequency);
+  //Serial.println();
 
   float pidError = kp * e + ki * intError + (kd * (e - lastError) / dt) ;
   if (desiredFrequency > 0) {
@@ -182,9 +180,9 @@ float Motor::pidValue() {
     intError = lastIntError; // anti-windup
   }
 
-  Serial.print("intError:");
-  Serial.print(intError);
-  Serial.print(",");
+  //Serial.print("intError:");
+  //Serial.print(intError);
+  //Serial.print(",");
 
   lastIntError = intError;
   lastError = e;
@@ -198,13 +196,13 @@ void Motor::step() {
   float pidVal = pidValue();
   setSpeed(pidVal);
 
-  Serial.print("pidValue:");
-  Serial.print(pidVal);
-  Serial.print(",");
-  Serial.print("pidValue50x:");
-  Serial.print((pidVal - basePidError) * 10);
-  Serial.print(",");
-  Serial.print("f:");
-  Serial.print(frequency);
-  Serial.println();
+  //Serial.print("pidValue:");
+  //Serial.print(pidVal);
+  //Serial.print(",");
+  //Serial.print("pidValue50x:");
+  //Serial.print((pidVal - basePidError) * 10);
+  //Serial.print(",");
+  //Serial.print("f:");
+  //Serial.print(frequency);
+  //Serial.println();
 }

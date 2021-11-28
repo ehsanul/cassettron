@@ -11,14 +11,13 @@ class Motor
     void setup(void (*ISR_callback)(void));
     void handleInterrupt();
     void step();
-    void setDesiredFrequency(float value);
     float pidValue();
+    float desiredFrequency = 0.0;
+    float frequency;
   private:
     void setSpeed(float value);
     void calculateFrequency();
     static constexpr float EMA_a = 0.4;
-    float frequency;
-    float desiredFrequency = 4.0;
     int motorPin;
     int encoderPin;
     int resolution = 12;
