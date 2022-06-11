@@ -14,7 +14,8 @@ class Envelope
     void setT3(int value); //ms
     void setL3(float value);
     void setT4(int value); //release
-    float getLevel(int time); //returns 0.0 - 1.0
+    float holdLevel(int time); //returns 0.0 - 1.0
+    float releaseLevel(int time); //returns 0.0 - 1.0
   private:
     int t1; // ms
     int t2; // ms
