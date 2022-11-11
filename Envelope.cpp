@@ -45,7 +45,7 @@ void Envelope::setT4(int value)
   t4 = value;
 }
 
-// returns level betwee 0.0 and 1.0 given time in ms
+// returns level between 0.0 and 1.0 given time in ms
 float Envelope::holdLevel(int t)
 {
   float l0 = 0.0;
